@@ -1,8 +1,10 @@
+import environment from "dotenv";
 import express from "express";
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
 import User, { UserSchema, IUser } from "./models/user";
 import bodyParser from "body-parser";
+import jsonwebtoken from "jsonwebtoken";
 import { Validation } from "./util/validation";
 
 const app = express();
@@ -10,18 +12,17 @@ const port = 3000; // default port to listen
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+environment.config();
 
 mongoose.connect('mongodb+srv://dbUser:okiL7P802ftjPse6@cluster0-jvig8.azure.mongodb.net/assesment?authSource=admin&replicaSet=Cluster0-shard-0&readPreference=primary&appname=MongoDB%20Compass&ssl=true',
-{ useNewUrlParser: true, useUnifiedTopology: true })
+    { useNewUrlParser: true, useUnifiedTopology: true })
     .then(
         () => { console.log('connected') },
         err => { console.log(err) }
     );
 
-// define a route handler for the default home page
 app.get("/", (req, res) => {
-    // render the index template
-    res.json({ message: 'hooray! welcome to our api!' });
+    res.json({ message: 'API working' });
 });
 
 app.post("/api/signup", (req, res) => {
@@ -66,7 +67,11 @@ app.post('/api/login', async (req, res) => {
         }
         try {
             if (await bcrypt.compare(req.body.password, user.password)) {
-                res.send({ message: 'Success' })
+                const jwtObject = { name: req.body.email }
+
+                const accessToken = jsonwebtoken.sign(jwtObject, process.env.ACCESS_TOKEN);
+
+                res.send({ message: 'Success', token: accessToken })
             } else {
                 res.status(400).send({ message: 'Not allowed' })
             }
@@ -81,3 +86,16 @@ app.listen(port, () => {
     // tslint:disable-next-line:no-console
     console.log(`server started at http://localhost:${port}`);
 });
+
+//Middleware for auth
+function authenticateToken(req: any, res: any, next: any) {
+    const authHeader = req.headers['authorization']
+    const token = authHeader && authHeader.split(' ')[1]
+    if (token == null) return res.sendStatus(401)
+
+    jsonwebtoken.verify(token, process.env.ACCESS_TOKEN_SECRET, (err: any, user: any) => {
+        if (err) return res.sendStatus(403)
+        req.user = user
+        next()
+    })
+}
