@@ -7,15 +7,21 @@ import bodyParser from "body-parser";
 import jsonwebtoken from "jsonwebtoken";
 import { Validation } from "./util/validation";
 
+import { PostsController } from "./controllers/posts.controller";
+import { Result } from "./models/result";
+
 const app = express();
 const port = 3000; // default port to listen
+
+const postController = new PostsController();
+const validation = new Validation();
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 environment.config();
 
-mongoose.connect('mongodb+srv://dbUser:okiL7P802ftjPse6@cluster0-jvig8.azure.mongodb.net/assesment?authSource=admin&replicaSet=Cluster0-shard-0&readPreference=primary&appname=MongoDB%20Compass&ssl=true',
-    { useNewUrlParser: true, useUnifiedTopology: true })
+
+mongoose.connect(process.env.CONNECTION_STRING, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(
         () => { console.log('connected') },
         err => { console.log(err) }
@@ -26,13 +32,11 @@ app.get("/", (req, res) => {
 });
 
 app.post("/api/signup", (req, res) => {
-    const validation = new Validation();
-
     try {
         if (validation.validateUser(req.body)) {
             bcrypt.hash(req.body.password, 10).then((hashedPassword) => {
                 const newUser = new User();
-                req.body.name = req.body.name;
+                newUser.name = req.body.name;
                 newUser.email = req.body.email;
                 newUser.password = hashedPassword;
 
@@ -67,7 +71,7 @@ app.post('/api/login', async (req, res) => {
         }
         try {
             if (await bcrypt.compare(req.body.password, user.password)) {
-                const jwtObject = { name: req.body.email }
+                const jwtObject = { email: req.body.email }
 
                 const accessToken = jsonwebtoken.sign(jwtObject, process.env.ACCESS_TOKEN);
 
@@ -81,21 +85,43 @@ app.post('/api/login', async (req, res) => {
     });
 })
 
+app.post('/api/post', authenticateToken, async (req: any, res) => {
+    try {
+        if (validation.validatePost(req.body)) {
+            await postController.createPost(req.body, req.jwtObject.email).then((result: Result) => {
+                if (result.success) {
+                    res.status(result.status).send(result.message);
+                }
+                else {
+                    res.sendStatus(result.status).send(result.message);
+                }
+            });
+
+
+        }
+        else {
+            res.status(400).send({ message: 'Create an object with title and content at least' });
+        }
+    } catch (error) {
+        res.status(500).send(error);
+    }
+});
+
 // start the express server
 app.listen(port, () => {
     // tslint:disable-next-line:no-console
     console.log(`server started at http://localhost:${port}`);
 });
 
-//Middleware for auth
+// Middleware for auth
 function authenticateToken(req: any, res: any, next: any) {
-    const authHeader = req.headers['authorization']
-    const token = authHeader && authHeader.split(' ')[1]
-    if (token == null) return res.sendStatus(401)
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+    if (token == null) return res.sendStatus(401);
 
-    jsonwebtoken.verify(token, process.env.ACCESS_TOKEN_SECRET, (err: any, user: any) => {
-        if (err) return res.sendStatus(403)
-        req.user = user
-        next()
+    jsonwebtoken.verify(token, process.env.ACCESS_TOKEN, (err: any, jwtObject: any) => {
+        if (err) return res.sendStatus(403);
+        req.jwtObject = jwtObject
+        next();
     })
 }
