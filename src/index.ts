@@ -96,13 +96,22 @@ app.post('/api/post', authenticateToken, async (req: any, res) => {
                     res.sendStatus(result.status).send(result.message);
                 }
             });
-
-
         }
         else {
             res.status(400).send({ message: 'Create an object with at least title and content' });
         }
     } catch (error) {
+        res.status(500).send(error);
+    }
+});
+
+app.get('/api/posts', authenticateToken, async(req: any, res) => {
+    try {
+        await postController.getPost(req.jwtObject.email).then((result)=>{
+            res.send(result);
+        });
+    }
+    catch(error) {
         res.status(500).send(error);
     }
 });

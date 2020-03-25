@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import User, { UserSchema, IUser } from '../models/user';
-import Post from '../models/post';
+import Post, { PostSchema, IPost } from '../models/post';
 import Result from '../models/result';
 
 export class PostsController {
@@ -52,6 +52,22 @@ export class PostsController {
 
                     resolve(result);
                 }
+            });
+        });
+    }
+
+    async getPost(ownerEmail: string) {
+        return new Promise(resolve => {
+            const users = mongoose.model("users", UserSchema);
+
+            users.findOne({ 'email': ownerEmail }, (error, user: IUser) => {
+                const posts = mongoose.model("posts", PostSchema);
+
+                posts.find({ '_id': { $in: user.posts } }, (err, postsData) => {
+                    resolve(postsData);
+                })
+
+                // {person1: mongoose.Types.ObjectId(Person._id)}
             });
         });
     }
