@@ -159,6 +159,27 @@ app.put('/api/posts/:id', authenticateToken, async (req: any, res) => {
     }
 });
 
+app.delete('/api/posts/:id', authenticateToken, async (req: any, res) => {
+    try {
+        if (req.params.id) {
+            await postController.deletePost(req.params.id, req.jwtObject.email).then((result: Result) => {
+                if (result.success) {
+                    res.status(200).send(result.message);
+                }
+                else {
+                    res.status(result.status).send(result.message);
+                }
+            });
+        }
+        else {
+            res.status(400).send({ message: 'not id present in query' });
+        }
+    }
+    catch (error) {
+        res.status(500).send(error);
+    }
+});
+
 // start the express server
 app.listen(port, () => {
     // tslint:disable-next-line:no-console

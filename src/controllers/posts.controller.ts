@@ -160,5 +160,63 @@ export class PostsController {
         });
     }
 
+    async deletePost(postId: string, ownerEmail: string) {
+        return new Promise(resolve => {
+            const posts = mongoose.model("posts", PostSchema);
+            const users = mongoose.model("users", UserSchema);
+
+            posts.findOne({ '_id': mongoose.Types.ObjectId(postId) }, (error, post: IPost) => {
+                const result = new Result();
+                if (post === null) {
+                    result.message = 'Post not found';
+                    result.status = 500;
+                    result.success = false;
+                    resolve(result);
+                }
+
+                // First, remove the id from the post array for the user
+                users.findOne({ 'posts': mongoose.Types.ObjectId(postId) }, (postErr, user: IUser) => {
+                    // If the owner of the post is the same making the request, delete the data
+                    if (user.email === ownerEmail) {
+                        users.findOneAndUpdate({ 'email': ownerEmail },
+                            { $pull: { posts: post._id } },
+                            (userErr: any) => {
+                                if (userErr) {
+                                    result.message = 'Error saving Post - Updating user: ' + userErr;
+                                    result.status = 500;
+                                    result.success = false;
+                                    resolve(result);
+                                }
+
+                                // Users collection updated, proceed to delete the post
+                                posts.findOneAndDelete({ '_id': mongoose.Types.ObjectId(postId) }, (err) => {
+                                    if (err) {
+                                        result.message = 'error deleting post ' + err;
+                                        result.status = 500;
+                                        result.success = false;
+                                        resolve(result);
+                                    }
+
+                                    result.message = 'Post deleted';
+                                    result.status = 201;
+                                    result.success = true;
+
+                                    resolve(result);
+                                });
+                            }
+                        )
+                    }
+                    else {
+                        result.data = {};
+                        result.message = 'Unauthorized';
+                        result.status = 401;
+                        result.success = true;
+                        resolve(result);
+                    }
+                });
+            });
+        });
+    }
+
 
 }
