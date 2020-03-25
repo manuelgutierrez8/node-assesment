@@ -66,9 +66,99 @@ export class PostsController {
                 posts.find({ '_id': { $in: user.posts } }, (err, postsData) => {
                     resolve(postsData);
                 })
-
-                // {person1: mongoose.Types.ObjectId(Person._id)}
             });
         });
     }
+
+    async getPostById(postId: string, ownerEmail: string) {
+        return new Promise(resolve => {
+            const posts = mongoose.model("posts", PostSchema);
+
+            posts.findOne({ '_id': mongoose.Types.ObjectId(postId) }, (error, post) => {
+                const result = new Result();
+
+                if (post === null) {
+                    result.message = 'post not found';
+                    result.data = {};
+                    result.status = 404;
+                    result.success = false;
+                    resolve(result);
+                }
+                else {
+                    // Post found, check if the user is the owner
+                    const users = mongoose.model("users", UserSchema);
+
+                    users.findOne({ 'posts': mongoose.Types.ObjectId(postId) }, (err, user: IUser) => {
+                        // If the owner of the post is the same making the request, send it as response
+                        if (user.email === ownerEmail) {
+                            result.data = post;
+                            result.message = 'OK';
+                            result.status = 200;
+                            result.success = true;
+                        }
+                        else {
+                            result.data = {};
+                            result.message = 'Unauthorized';
+                            result.status = 401;
+                            result.success = true;
+                        }
+                        resolve(result);
+                    });
+                }
+            });
+        });
+    }
+
+    async updatePost(updatedInfo: any, postId: string, ownerEmail: string) {
+        return new Promise(resolve => {
+            const posts = mongoose.model("posts", PostSchema);
+
+            posts.findOne({ '_id': mongoose.Types.ObjectId(postId) }, (error, post: IPost) => {
+                const result = new Result();
+
+                if (error) {
+                    result.message = error;
+                    result.status = 500;
+                    result.success = false;
+                    resolve(result);
+                }
+
+                const users = mongoose.model("users", UserSchema);
+
+                users.findOne({ 'posts': mongoose.Types.ObjectId(postId) }, (err, user: IUser) => {
+                    // If the owner of the post is the same making the request, update the data
+                    if (user.email === ownerEmail) {
+                        post.update({
+                            'content': updatedInfo.content ? updatedInfo.content : post.content,
+                            'imageUrl': updatedInfo.imageUrl ? updatedInfo.imageUrl : post.imageUrl,
+                            'title': updatedInfo.title ? updatedInfo.title : post.title,
+                        }, (updateErr) => {
+                            if (updateErr) {
+                                result.message = updateErr;
+                                result.status = 500;
+                                result.success = false;
+                                resolve(result);
+                            }
+
+                            result.message = 'Post updated';
+                            result.status = 200;
+                            result.success = true;
+                            resolve(result);
+                        });
+                    }
+                    else {
+                        result.data = {};
+                        result.message = 'Unauthorized';
+                        result.status = 401;
+                        result.success = true;
+                        resolve(result);
+                    }
+                });
+
+
+            });
+        });
+    }
+
+
 }
