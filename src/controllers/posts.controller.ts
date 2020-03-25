@@ -23,13 +23,27 @@ export class PostsController {
                             result.message = 'Error saving Post: ' + err;
                             result.status = 500;
                             result.success = false;
+                            resolve(result);
                         }
 
-                        result.message = 'Post saved';
-                        result.status = 201;
-                        result.success = true;
+                        // Add the post id to the users collection
+                        users.findOneAndUpdate({ 'email': creatorUser },
+                            { $push: { posts: post._id } },
+                            (userErr: any) => {
+                                if (userErr) {
+                                    result.message = 'Error saving Post - Updating user: ' + userErr;
+                                    result.status = 500;
+                                    result.success = false;
+                                    resolve(result);
+                                }
 
-                        resolve(result);
+                                result.message = 'Post saved';
+                                result.status = 201;
+                                result.success = true;
+
+                                resolve(result);
+                            }
+                        )
                     });
                 } catch (error) {
                     result.message = error;

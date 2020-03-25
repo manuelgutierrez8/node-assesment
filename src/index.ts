@@ -100,7 +100,7 @@ app.post('/api/post', authenticateToken, async (req: any, res) => {
 
         }
         else {
-            res.status(400).send({ message: 'Create an object with title and content at least' });
+            res.status(400).send({ message: 'Create an object with at least title and content' });
         }
     } catch (error) {
         res.status(500).send(error);
