@@ -8,12 +8,14 @@ import jsonwebtoken from "jsonwebtoken";
 import { Validation } from "./util/validation";
 
 import { PostsController } from "./controllers/posts.controller";
+import { UserController } from "./controllers/user.controller";
 import { Result } from "./models/result";
 
 const app = express();
 const port = 3000; // default port to listen
 
 const postController = new PostsController();
+const userController = new UserController();
 const validation = new Validation();
 
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -34,19 +36,26 @@ app.get("/", (req, res) => {
 app.post("/api/signup", (req, res) => {
     try {
         if (validation.validateUser(req.body)) {
-            bcrypt.hash(req.body.password, 10).then((hashedPassword) => {
-                const newUser = new User();
-                newUser.name = req.body.name;
-                newUser.email = req.body.email;
-                newUser.password = hashedPassword;
+            userController.userExists(req.body.email).then(exists => {
+                if (!exists) {
+                    bcrypt.hash(req.body.password, 10).then((hashedPassword) => {
+                        const newUser = new User();
+                        newUser.name = req.body.name;
+                        newUser.email = req.body.email;
+                        newUser.password = hashedPassword;
 
-                newUser.save((error: any) => {
-                    if (error) {
-                        res.send(error);
-                    }
+                        newUser.save((error: any) => {
+                            if (error) {
+                                res.send(error);
+                            }
 
-                    res.status(201).send({ message: 'User created!' });
-                });
+                            res.status(201).send({ message: 'User created!' });
+                        });
+                    });
+                }
+                else {
+                    res.status(400).send({ message: 'Email already in use' });
+                }
             });
         }
         else {

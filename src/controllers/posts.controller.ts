@@ -189,7 +189,7 @@ export class PostsController {
                                 }
 
                                 // Users collection updated, proceed to delete the post
-                                posts.findOneAndDelete({ '_id': mongoose.Types.ObjectId(postId) }, (err) => {
+                                posts.findOneAndRemove({ '_id': mongoose.Types.ObjectId(postId) }, (err) => {
                                     if (err) {
                                         result.message = 'error deleting post ' + err;
                                         result.status = 500;
